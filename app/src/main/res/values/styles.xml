@@ -1,0 +1,18 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <style name="AppTheme" parent="android:Theme.Light.NoTitleBar">
+        <item name="android:windowBackground">@color/note_page_bg</item>
+        <item name="android:colorBackground">@color/note_page_bg</item>
+        <item name="android:textColorPrimary">@color/text_primary</item>
+        <item name="android:textColorSecondary">@color/text_secondary</item>
+    </style>
+
+    <!-- TitleEditor弹窗主题，继承自己的AppTheme，设置对话框窗口特性 -->
+    <style name="AppTheme.Dialog" parent="AppTheme">
+        <item name="android:windowIsFloating">true</item>
+        <item name="android:windowTitleStyle">@null</item>
+        <item name="android:backgroundDimEnabled">true</item>
+    </style>
+</resources>
+
+

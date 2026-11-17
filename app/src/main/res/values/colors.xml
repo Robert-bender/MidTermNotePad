@@ -1,0 +1,9 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <!-- 页面背景 -->
+    <color name="note_page_bg">#FFF8F8F8</color>
+    <!-- 主要文字深色 -->
+    <color name="text_primary">#1c1c1e</color>
+    <!-- 次要文字（列表时间） -->
+    <color name="text_secondary">#86868b</color>
+</resources>
