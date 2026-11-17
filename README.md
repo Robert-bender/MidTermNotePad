@@ -7,6 +7,7 @@
 
 解决方法:
 在build.gradle中将jcenter()全部替换成mavenCentral()即可，一共需要替换两处。
+![img.png](img.png)![img_1.png](img_1.png)
 
 # 本次更新实现的功能
 1.NoteList界面中笔记条目增加时间戳显示
