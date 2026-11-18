@@ -153,6 +153,12 @@ public final class NotePad {
         // 更新笔记的时间
         public static final String COLUMN_NAME_MODIFICATION_DATE = "modified";
 
+        /**
+         * Column name for the note's UUID (跨设备唯一键，用于云备份/恢复)
+         * <P>Type: TEXT</P>
+         */
+        public static final String COLUMN_NAME_UUID = "uuid";
+
         // 新增：搜索 selection（按标题或内容模糊匹配）
         public static final String SEARCH_SELECTION =
                 COLUMN_NAME_TITLE + " LIKE ? OR " + COLUMN_NAME_NOTE + " LIKE ?";

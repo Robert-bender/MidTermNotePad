@@ -21,3 +21,34 @@ android {
         }
     }
 }
+apply plugin: 'com.android.application'
+
+android {
+    namespace 'com.example.android.notepad'
+    compileSdkVersion 23
+    buildToolsVersion "23.0.1"
+
+    defaultConfig {
+        applicationId "com.example.android.notepad"
+        minSdkVersion 11
+        targetSdkVersion 23
+
+        testApplicationId "com.example.android.notepad.tests"
+        testInstrumentationRunner "android.test.InstrumentationTestRunner"
+    }
+
+    buildTypes {
+        release {
+            minifyEnabled false
+            proguardFiles getDefaultProguardFile('proguard-android.txt'), 'proguard-rules.txt'
+        }
+    }
+}
+dependencies {
+    // okhttp 3.12.13 兼容 minSdk 11
+    implementation 'com.squareup.okhttp3:okhttp:3.12.13'
+    // gson
+    implementation 'com.google.code.gson:gson:2.8.9'
+
+    implementation 'com.android.support:support-v4:23.4.0'
+}

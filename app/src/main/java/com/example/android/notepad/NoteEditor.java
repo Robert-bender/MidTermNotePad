@@ -40,6 +40,8 @@ import android.view.MenuInflater;
 import android.view.MenuItem;
 import android.widget.EditText;
 
+import com.example.android.notepad.net.DeleteHelper;
+
 /**
  * This Activity handles "editing" a note, where editing is responding to
  * {@link Intent#ACTION_VIEW} (request to view data), edit a note
@@ -433,17 +435,32 @@ public class NoteEditor extends Activity {
      */
     @Override
     public boolean onOptionsItemSelected(MenuItem item) {
-        // Handle all of the possible menu actions.
         int id = item.getItemId();
-        if(id== R.id.menu_save) {
+        if (id == R.id.menu_save) {
             String text = mText.getText().toString();
             updateNote(text, null);
             finish();
         } else if (id == R.id.menu_delete) {
-            deleteNote();
-            finish();
+//            deleteNote();
+//            finish();
+            // ★ 弹三选对话框删除；删完 finish 回到列表
+            // 先把当前编辑内容落库，保证 uuid 等一致（uuid 在 insert 时已生成，这里不需要）
+            DeleteHelper.showDialog(this, mUri, new DeleteHelper.OnDeleted() {
+                @Override
+                public void onDeleted(boolean cloudSynced) {
+                    mText.setText("");
+                    setResult(RESULT_OK);
+                    finish();
+                }
+            });
         } else if (id == R.id.menu_revert) {
             cancelNote();
+        } else if (id == R.id.menu_export) {
+            // ★ 新增：导出当前笔记为 TXT 并分享
+            // 注意：先落库，保证导出的是最新内容
+            updateNote(mText.getText().toString(), null);
+            ExportManager.exportSingle(this, mUri);
+            return true;
         }
         return super.onOptionsItemSelected(item);
     }

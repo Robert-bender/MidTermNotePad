@@ -45,7 +45,17 @@ import java.text.SimpleDateFormat;
 import java.util.Date;
 import java.util.Locale;
 
+import android.app.AlertDialog;
+import android.content.DialogInterface;
+import android.widget.Toast;
 
+import com.example.android.notepad.net.BackupApi;
+import com.example.android.notepad.net.BackupResponse;
+import com.example.android.notepad.net.NoteDto;
+import com.example.android.notepad.net.RestoreResponse;
+import com.example.android.notepad.net.DeleteHelper;
+
+import java.util.List;
 /**
  * Displays a list of notes. Will display notes from the {@link Uri}
  * provided in the incoming Intent if there is one, otherwise it defaults to displaying the
@@ -326,6 +336,112 @@ public class NotesList extends ListActivity {
         return true;
     }
 
+    // ================= 云备份 / 恢复 =================
+
+    private void doBackup() {
+        Toast.makeText(this, "开始备份...", Toast.LENGTH_SHORT).show();
+        BackupHelper.doBackup(this, new BackupApi.Callback<BackupResponse>() {
+            @Override
+            public void onSuccess(BackupResponse r) {
+                if (r == null) {
+                    Toast.makeText(NotesList.this, "备份失败：空响应", Toast.LENGTH_LONG).show();
+                    return;
+                }
+                if (r.code == 0) {
+                    Toast.makeText(NotesList.this,
+                            "备份成功，共 " + r.count + " 条",
+                            Toast.LENGTH_LONG).show();
+                } else {
+                    Toast.makeText(NotesList.this,
+                            "备份失败：" + r.msg, Toast.LENGTH_LONG).show();
+                }
+            }
+            @Override
+            public void onError(Exception e) {
+                Toast.makeText(NotesList.this,
+                        "备份失败：" + e.getMessage(), Toast.LENGTH_LONG).show();
+            }
+        });
+    }
+
+    private void doRestoreFlow() {
+        Toast.makeText(this, "正在拉取云端备份...", Toast.LENGTH_SHORT).show();
+        BackupHelper.doFetchRemote(this, new BackupApi.Callback<RestoreResponse>() {
+            @Override
+            public void onSuccess(RestoreResponse resp) {
+                if (resp == null || resp.code != 0) {
+                    Toast.makeText(NotesList.this,
+                            "拉取失败：" + (resp == null ? "空响应" : resp.msg),
+                            Toast.LENGTH_LONG).show();
+                    return;
+                }
+                final List<NoteDto> remote = resp.data;
+                if (remote == null || remote.isEmpty()) {
+                    Toast.makeText(NotesList.this, "云端没有备份", Toast.LENGTH_LONG).show();
+                    return;
+                }
+                showRestoreChoiceDialog(remote);
+            }
+            @Override
+            public void onError(Exception e) {
+                Toast.makeText(NotesList.this,
+                        "拉取失败：" + e.getMessage(), Toast.LENGTH_LONG).show();
+            }
+        });
+    }
+
+    private void showRestoreChoiceDialog(final List<NoteDto> remote) {
+        new AlertDialog.Builder(this)
+                .setTitle("恢复方式")
+                .setMessage("云端有 " + remote.size() + " 条笔记。\n\n"
+                        + "合并：按 uuid 比对，保留本地较新的，插入云端新增的\n"
+                        + "覆盖：清空本地全部笔记，完全以云端为准")
+                .setPositiveButton("合并", new DialogInterface.OnClickListener() {
+                    @Override
+                    public void onClick(DialogInterface d, int w) {
+                        doRestoreMerge(remote);
+                    }
+                })
+                .setNegativeButton("覆盖", new DialogInterface.OnClickListener() {
+                    @Override
+                    public void onClick(DialogInterface d, int w) {
+                        confirmOverwrite(remote);
+                    }
+                })
+                .setNeutralButton("取消", null)
+                .show();
+    }
+
+    private void confirmOverwrite(final List<NoteDto> remote) {
+        new AlertDialog.Builder(this)
+                .setTitle("确认覆盖？")
+                .setMessage("将清空本地全部笔记，用云端的 " + remote.size() + " 条替换。\n此操作不可撤销！")
+                .setPositiveButton("确认覆盖", new DialogInterface.OnClickListener() {
+                    @Override
+                    public void onClick(DialogInterface d, int w) {
+                        BackupRestoreHelper.Result r =
+                                BackupRestoreHelper.restoreOverwrite(NotesList.this, remote);
+                        toastRestoreResult("覆盖", r);
+                    }
+                })
+                .setNegativeButton("取消", null)
+                .show();
+    }
+
+    private void doRestoreMerge(final List<NoteDto> remote) {
+        BackupRestoreHelper.Result r =
+                BackupRestoreHelper.restoreMerge(NotesList.this, remote);
+        toastRestoreResult("合并", r);
+    }
+
+    private void toastRestoreResult(String mode, BackupRestoreHelper.Result r) {
+        Toast.makeText(this,
+                mode + "完成：新增 " + r.inserted + "，更新 " + r.updated + "，跳过 " + r.skipped,
+                Toast.LENGTH_LONG).show();
+        // 刷新列表
+        onResume();
+    }
+
     /**
      * This method is called when the user selects an option from the menu, but no item
      * in the list is selected. If the option was INSERT, then a new Intent is sent out with action
@@ -356,21 +472,15 @@ public class NotesList extends ListActivity {
              */
             startActivity(new Intent(Intent.ACTION_PASTE, getIntent().getData()));
             return true;
-//            long selectedId = getSelectedItemId();
-//            Uri baseUri = getIntent().getData();
-//            Intent intent;
-//            if (selectedId != ListView.INVALID_ROW_ID) {
-//                // ✅ 有选中笔记：ACTION_EDIT，带上笔记id，在原有笔记里粘贴
-//                Uri editUri = ContentUris.withAppendedId(baseUri, selectedId);
-//                intent = new Intent(Intent.ACTION_EDIT, editUri);
-//                // 给编辑器标记：进来的时候要执行粘贴
-//                intent.putExtra("do_paste", true);
-//            } else {
-//                // ❌ 没有选中：保留原有行为，ACTION_PASTE 新建笔记
-//                intent = new Intent(Intent.ACTION_PASTE, baseUri);
-//            }
-//            startActivity(intent);
-//            return true;
+        } else if (item.getItemId() == R.id.menu_export_all) {
+            ExportManager.exportAll(this);
+            return true;
+        } else if (item.getItemId() == R.id.menu_backup) {
+            doBackup();
+            return true;
+        } else if (item.getItemId() == R.id.menu_restore) {
+            doRestoreFlow();
+            return true;
         }
         return super.onOptionsItemSelected(item);
     }
@@ -493,16 +603,6 @@ public class NotesList extends ListActivity {
             ClipboardManager clipboard = (ClipboardManager)
                     getSystemService(Context.CLIPBOARD_SERVICE);
 
-//            Cursor c = getContentResolver().query(noteUri, new String[]{Notes.TITLE, Notes.NOTE}, null, null, null);
-//            String text = "";
-//            if(c != null && c.moveToFirst()){
-//                String title = c.getString(0);
-//                String content = c.getString(1);
-//                text = title + "\n" + content;
-//                c.close();
-//            }
-//            clipboard.setPrimaryClip(ClipData.newPlainText("Note Text", text));
-
             // Copies the notes URI to the clipboard. In effect, this copies the note itself
             clipboard.setPrimaryClip(ClipData.newUri(   // new clipboard item holding a URI
                     getContentResolver(),               // resolver to retrieve URI info
@@ -516,13 +616,15 @@ public class NotesList extends ListActivity {
             // Deletes the note from the provider by passing in a URI in note ID format.
             // Please see the introductory note about performing provider operations on the
             // UI thread.
-            getContentResolver().delete(
-                    noteUri,  // The URI of the provider
-                    null,     // No where clause is needed, since only a single note ID is being
-                    // passed in.
-                    null      // No where clause is used, so no where arguments are needed.
-            );
+//            getContentResolver().delete(
+//                    noteUri,  // The URI of the provider
+//                    null,     // No where clause is needed, since only a single note ID is being
+//                    // passed in.
+//                    null      // No where clause is used, so no where arguments are needed.
+//            );
 
+            // ★ 改为弹三选对话框：云端同步删除 / 仅本地删除 / 取消
+            DeleteHelper.showDialog(this, noteUri, null);
             // Returns to the caller and skips further processing.
             return true;
         }
